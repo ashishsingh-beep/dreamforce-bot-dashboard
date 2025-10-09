@@ -18,6 +18,8 @@ export default function Request() {
   const [userId, setUserId] = useState(null);
   const [keywords, setKeywords] = useState(''); // space separated only
   const [requestByName, setRequestByName] = useState('');
+  const [tag, setTag] = useState('');
+  const [loadTime, setLoadTime] = useState(3);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   const [formMsg, setFormMsg] = useState(null);
@@ -44,7 +46,7 @@ export default function Request() {
     try {
       const { data, error } = await supabase
         .from('requests')
-        .select('request_id, created_at, keywords, request_by_name, is_fulfilled')
+  .select('request_id, created_at, keywords, request_by_name, tag, load_time, is_fulfilled')
         .eq('request_by', userId)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -90,10 +92,13 @@ export default function Request() {
     e.preventDefault();
     resetMessages();
     if (!userId) { setFormError('You must be logged in.'); return; }
-  if (!keywords.trim()) { setFormError('Keywords required.'); return; }
-  if (/[,\n]/.test(keywords)) { setFormError('Remove commas / line breaks. Use single spaces.'); return; }
-  if (/\s{2,}/.test(keywords.trim())) { setFormError('Collapse multiple spaces between keywords.'); return; }
+    if (!keywords.trim()) { setFormError('Keywords required.'); return; }
+    if (/[,\n]/.test(keywords)) { setFormError('Remove commas / line breaks. Use single spaces.'); return; }
+    if (/\s{2,}/.test(keywords.trim())) { setFormError('Collapse multiple spaces between keywords.'); return; }
     if (!requestByName.trim()) { setFormError('Your name is required.'); return; }
+    if (!tag.trim()) { setFormError('Tag is required.'); return; }
+    const num = Number(loadTime);
+    if (!Number.isFinite(num) || num < 1) { setFormError('Duration must be a number >= 1.'); return; }
 
     setSubmitting(true);
     try {
@@ -101,6 +106,8 @@ export default function Request() {
         keywords: keywords.trim(),
         request_by: userId,
         request_by_name: requestByName.trim(),
+        tag: tag.trim(),
+        load_time: num,
         // is_fulfilled left as default (false)
       };
       const { data, error } = await supabase.from('requests').insert([row]).select().maybeSingle();
@@ -145,6 +152,28 @@ export default function Request() {
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span className="small" style={{ fontWeight: 600 }}>Tag<span style={{ color: 'crimson' }}> *</span></span>
+              <input
+                type="text"
+                value={tag}
+                disabled={submitting}
+                onChange={(e)=> setTag(e.target.value)}
+                placeholder="e.g. SDR, Marketing, Founders"
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span className="small" style={{ fontWeight: 600 }}>Duration (mins)<span style={{ color: 'crimson' }}> *</span></span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={loadTime}
+                disabled={submitting}
+                onChange={(e)=> setLoadTime(e.target.value)}
+                placeholder="3"
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span className="small" style={{ fontWeight: 600 }}>Your Name<span style={{ color: 'crimson' }}> *</span></span>
               <input
                 type="text"
@@ -180,6 +209,8 @@ export default function Request() {
                   <tr>
                     <th style={{ whiteSpace: 'nowrap' }}>Created</th>
                     <th>Keywords</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>Tag</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>Duration</th>
                     <th style={{ whiteSpace: 'nowrap' }}>Name</th>
                     <th style={{ whiteSpace: 'nowrap' }}>Fulfilled</th>
                     <th>ID</th>
@@ -190,6 +221,8 @@ export default function Request() {
                     <tr key={r.request_id}>
                       <td title={r.created_at}>{r.created_at?.slice(0,19).replace('T',' ')}</td>
                       <td className="truncate" title={r.keywords}>{r.keywords?.slice(0,120) || '—'}</td>
+                      <td className="truncate" title={r.tag}>{r.tag || '—'}</td>
+                      <td style={{ textAlign:'center' }}>{r.load_time ?? '—'}</td>
                       <td>{r.request_by_name || '—'}</td>
                       <td style={{ textAlign: 'center' }}>{r.is_fulfilled ? 'Yes' : 'No'}</td>
                       <td className="truncate" title={r.request_id}>{r.request_id?.slice(0,8)}…</td>
