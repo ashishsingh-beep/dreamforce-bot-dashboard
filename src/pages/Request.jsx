@@ -162,7 +162,7 @@ export default function Request() {
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span className="small" style={{ fontWeight: 600 }}>Duration (mins)<span style={{ color: 'crimson' }}> *</span></span>
+              <span className="small" style={{ fontWeight: 600 }}>Duration (sec)<span style={{ color: 'crimson' }}> *</span></span>
               <input
                 type="number"
                 min={1}
