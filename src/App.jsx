@@ -4,14 +4,13 @@ import { supabase } from "./services/supabaseClient";
 import LoginForm from "./components/LoginForm";
 import SignupForm from "./components/SignupForm";
 import Navbar from "./components/Navbar";
-import Accounts from "./pages/Page1";
 import Request from "./pages/Request";
 import Stage1 from "./pages/Page2";
 import Stage2 from "./pages/Page3";
 import Stage3 from "./pages/Page4";
-import RemoteAccess from "./pages/Page5";
 import ForgotPasswordForm from "./components/ForgotPasswordForm";
 import ResetPasswordForm from "./components/ResetPasswordForm";
+import Stage4 from "./pages/Page5";
 
 function App() {
   const [session, setSession] = useState(null);
@@ -65,8 +64,7 @@ function App() {
           path="/reset-password"
           element={session ? <ResetPasswordForm /> : <Navigate to="/login" replace />}
         />
-        <Route path="/request" element={session ? <Request /> : <Navigate to="/login" replace />} />
-  <Route path="/page1" element={session ? <Accounts /> : <Navigate to="/login" replace />} />
+    <Route path="/request" element={session ? <Request /> : <Navigate to="/login" replace />} />
         <Route
           path="/page2"
           element={session ? <Stage1 /> : <Navigate to="/login" replace />}
@@ -81,7 +79,7 @@ function App() {
         />
         <Route
           path="/page5"
-          element={session ? <RemoteAccess /> : <Navigate to="/login" replace />}
+          element={session ? <Stage4 /> : <Navigate to="/login" replace />}
         />
 
   {/* Root / fallback now point to /request */}

@@ -329,7 +329,6 @@ export default function Stage1() {
   return (
     <div className="scraper-page container">
       <h2>Lead Collection Dashboard</h2>
-      <p className="muted small" style={{marginTop:4}}>Scraper functionality has been removed. This page now only shows collected leads.</p>
         <div className="dashboard-wrapper mt-sm">
           <h2>Dashboard</h2>
           <p className="muted small">Date From: {dashDateFrom || '...'} Date To: {dashDateTo || '...'} Rows: {dashRows.length} / Total: {dashTotal}</p>

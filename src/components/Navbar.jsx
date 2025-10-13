@@ -32,7 +32,7 @@ function Navbar({ session }) {
   }, []);
 
   const path = location.pathname;
-  const isTab2Active = path === "/page2" || path === "/page3" || path === "/page4";
+  const isTab2Active = path === "/page2" || path === "/page3" || path === "/page4" || path === "/page5";
 
   return (
     <header className="navbar">
@@ -48,9 +48,7 @@ function Navbar({ session }) {
           Request
         </NavLink>
 
-        <NavLink to="/page1" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
-          Add Linkedin Accounts
-        </NavLink>
+        {/* Accounts page removed */}
 
         <div
           className={"dropdown" + (open ? " open" : "")}
@@ -63,7 +61,7 @@ function Navbar({ session }) {
             onClick={() => setOpen((v) => !v)}
             className={"dropdown-toggle" + (isTab2Active ? " active" : "")}
           >
-            Customize Campaign
+            Data Dashboard
             <span className="caret" aria-hidden>▾</span>
           </button>
 
@@ -72,17 +70,18 @@ function Navbar({ session }) {
               Stage 1 - Lead Scout
             </NavLink>
             <NavLink to="/page3" className={({ isActive }) => "dropdown-item" + (isActive ? " active" : "")} onClick={() => setOpen(false)}>
-              Stage 2 - Enrichment
+              Stage 2 - Lead Details
             </NavLink>
             <NavLink to="/page4" className={({ isActive }) => "dropdown-item" + (isActive ? " active" : "")} onClick={() => setOpen(false)}>
               Stage 3 - Filtration
             </NavLink>
+            <NavLink to="/page5" className={({ isActive }) => "dropdown-item" + (isActive ? " active" : "")} onClick={() => setOpen(false)}>
+              Stage 4 - Contact Enrichment
+            </NavLink>
           </div>
         </div>
 
-        <NavLink to="/page5" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}>
-          Access Tool Remotly
-        </NavLink>
+        {/* Remote Access page removed */}
       </nav>
 
       <div className="nav-right">

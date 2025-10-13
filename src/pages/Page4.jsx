@@ -3,12 +3,202 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import '../styles/page4.css';
 import { supabase } from '../services/supabaseClient';
 
-// Simplified Page4: only Stage3 Dashboard (scraper/batch processing removed)
 export default function Stage3(){
+  const [tab,setTab]=useState('scraper'); // 'scraper' | 'dashboard'
   return (
     <div className="page4-wrapper">
-      <Stage3Dashboard />
+      <div className="tabs" style={{display:'flex',gap:8,marginBottom:12}}>
+        <button type="button" className={"btn" + (tab==='scraper'? ' primary':' outline')} onClick={()=>setTab('scraper')}>Scraper</button>
+        <button type="button" className={"btn" + (tab==='dashboard'? ' primary':' outline')} onClick={()=>setTab('dashboard')}>Dashboard</button>
+      </div>
+      {tab==='scraper'? <Stage3Scraper /> : <Stage3Dashboard />}
     </div>
+  );
+}
+
+function Stage3Scraper(){
+  // Shared Text Inputs
+  const [wildnetData, setWildnetData] = useState('');
+  const [scoringCriteriaAndIcp, setScoringCriteriaAndIcp] = useState('');
+  const [messagePrompt, setMessagePrompt] = useState('');
+
+  // Presets
+  const [preset, setPreset] = useState('custom'); // 'lead_basic' | 'lead_firmo_techno' | 'custom'
+  const PRESETS = {
+    lead_basic: {
+      label: 'Lead filtration',
+      wildnetData: `About Wildnet Technologies:\n- We help B2B companies accelerate outbound by identifying high-intent prospects and crafting tailored first-touch messages.\n- Core value prop: Higher reply rates through precise ICP matching and relevant personalization.\n\nContext:\n- Use LinkedIn and public data only.\n- Avoid making assumptions not supported by the data.`,
+      scoringCriteriaAndIcp: `Scoring Criteria (0–100):\n- Relevance to ICP (industry, role seniority, function) – 40\n- Clear buying signals (keywords in bio/experience) – 30\n- Company fit (size/stage, geography if available) – 20\n- Data confidence/clarity – 10\n\nIdeal Customer Profile (ICP):\n- Roles: Founders, CEOs, Heads of Growth/Marketing/Sales\n- Industries: SaaS, B2B services\n- Company size: 10–500\n\nEligibility Rules:\n- If role or company context is too generic or missing, mark ineligible.\n- If misaligned industry/function, mark ineligible.`,
+      messagePrompt: `Task:\n1) Decide if the lead matches the ICP.\n2) If eligible, generate a concise, personalized first-touch message.\n\nOutput format (JSON):\n{\n  "should_contact": true|false,\n  "score": 0-100,\n  "subject": "short subject",\n  "message": "2-4 sentence DM/email with 1 relevant hook"\n}\n\nGuidelines:\n- Personalize using title, company, and visible achievements.\n- Avoid fluff; be specific and value-driven.\n- No fake familiarity; use only provided data.`
+    },
+    lead_firmo_techno: {
+      label: 'Lead filtration + Firmographics/Technographics',
+      wildnetData: `About Wildnet Technologies:\n- We provide outbound ops: prospecting, enrichment, scoring, and messaging at scale.\n\nTarget Firmographics:\n- Industries: SaaS, B2B services\n- Company size: 20–1000 employees\n- Regions: North America, Europe (if visible)\n\nTarget Technographics (if visible):\n- CRM/Marketing tools (e.g., HubSpot, Salesforce, Marketo)\n- Sales tools (e.g., Outreach, Salesloft)\n- Data tools (e.g., Snowflake, BigQuery)\n\nNotes:\n- Use only explicit data; do not infer missing technographics.`,
+      scoringCriteriaAndIcp: `Scoring Criteria (0–100):\n- Role/Function Relevance – 25\n- Industry/Company Size Fit – 25\n- Technographic Fit – 25\n- Observable Buying Signals – 15\n- Data Confidence – 10\n\nEligibility Rules:\n- Missing role and company context → ineligible.\n- Clear mismatch in industry/function → ineligible.\n\nICP Summary:\n- Roles: Founders, RevOps, Growth/Marketing/Sales leaders\n- Industries: SaaS, B2B services\n- Size: 20–1000 employees`,
+      messagePrompt: `Task:\n1) Evaluate lead against firmographic and technographic fit.\n2) If eligible, produce a short, tailored first-touch message.\n\nOutput (JSON):\n{\n  "should_contact": true|false,\n  "score": 0-100,\n  "subject": "short subject",\n  "message": "personalized message (2-4 sentences)"\n}\n\nMessaging Tips:\n- Reference any visible tools, growth indicators, or relevant initiatives.\n- Keep it helpful and specific; avoid generic claims.\n- No hallucinations; use only provided data.`
+    },
+    custom: {
+      label: 'Custom',
+      wildnetData: '',
+      scoringCriteriaAndIcp: '',
+      messagePrompt: ''
+    }
+  };
+
+  const applyPreset = (key)=>{
+    const tpl = PRESETS[key] || PRESETS.custom;
+    setWildnetData(tpl.wildnetData);
+    setScoringCriteriaAndIcp(tpl.scoringCriteriaAndIcp);
+    setMessagePrompt(tpl.messagePrompt);
+  };
+
+  // Run state
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState({ total: 0, success: 0, failed: 0 });
+  const [lastError, setLastError] = useState(null);
+  const [lastResponse, setLastResponse] = useState(null);
+  const [info, setInfo] = useState('');
+
+  const [userId, setUserId] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if(!mounted) return;
+      if (!error) setUserId(data?.user?.id || null);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const canRun = !!(wildnetData.trim() && scoringCriteriaAndIcp.trim() && messagePrompt.trim() && userId);
+
+  async function fetchRandomApiKey(){
+    // Fetch available keys and pick one randomly
+    const { data, error } = await supabase.from('gemini_api').select('api_key');
+    if(error) throw error;
+    const rows = Array.isArray(data)? data : [];
+    if(!rows.length) throw new Error('No API keys found in gemini_api');
+    const idx = Math.floor(Math.random()*rows.length);
+    return rows[idx].api_key;
+  }
+
+  async function fetchUnsentLeadsByUser(uid){
+    // Prefer documented function name; fallback to alternate if needed
+    let rpcName = 'fetch_unsent_leads_by_user';
+    let { data, error } = await supabase.rpc(rpcName, { _user_id: uid });
+    if(error){
+      // Fallback try: fetch_unsent_leads
+      rpcName = 'fetch_unsent_leads';
+      const res2 = await supabase.rpc(rpcName, { _user_id: uid });
+      data = res2.data; error = res2.error;
+    }
+    if(error) throw error;
+    return Array.isArray(data)? data : [];
+  }
+
+  async function handleRun(){
+    setLastError(null); setLastResponse(null); setInfo('');
+    if(!canRun){ setLastError('Fill all text fields first.'); return; }
+    if(!userId){ setLastError('Not signed in.'); return; }
+    setRunning(true); setProgress({ total: 0, success: 0, failed: 0 });
+    try{
+      // 1) Leads
+      const leads = await fetchUnsentLeadsByUser(userId);
+      if(!leads.length){ setInfo('No unsent leads for this user.'); return; }
+      setProgress(p=> ({ ...p, total: leads.length }));
+
+      // 2) API key
+      const apiKey = await fetchRandomApiKey();
+
+      // 3) Send one request per lead
+      for(let i=0;i<leads.length;i++){
+        const ld = leads[i];
+        const payload = {
+          api_key: apiKey,
+          wildnet_data: wildnetData.trim(),
+          scoring_criteria_and_icp: scoringCriteriaAndIcp.trim(),
+          message_prompt: messagePrompt.trim(),
+          lead: {
+            lead_id: ld.lead_id ?? null,
+            tag: ld.tag ?? null,
+            name: ld.name ?? null,
+            title: ld.title ?? null,
+            location: ld.location ?? null,
+            company_name: ld.company_name ?? null,
+            experience: ld.experience ?? null,
+            skills: ld.skills ?? null,
+            bio: ld.bio ?? null,
+            profile_url: ld.profile_url ?? null,
+            linkedin_url: ld.linkedin_url ?? null,
+            company_page_url: ld.company_page_url ?? null,
+          }
+        };
+        try{
+          const res = await fetch('http://localhost:8000/process-lead', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+          });
+          const json = await res.json().catch(()=>({ success:false, error:'Invalid JSON response' }));
+          setLastResponse(json);
+          if(!res.ok){ throw new Error(json.error || `HTTP ${res.status}`); }
+          setProgress(prev => ({ ...prev, success: prev.success + 1 }));
+        }catch(e){
+          setLastError(e.message || 'Failed for a lead');
+          setProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
+        }
+      }
+    }catch(e){
+      setLastError(e.message || 'Failed to run');
+    }finally{
+      setRunning(false);
+    }
+  }
+
+  return (
+    <section className="card">
+      <h3 className="section-title">Shared Text Inputs</h3>
+      <div className="flex-row wrap" style={{gap:8, alignItems:'center', marginBottom:8}}>
+        <label>Preset<br/>
+          <select value={preset} onChange={(e)=>{ const k=e.target.value; setPreset(k); applyPreset(k); }}>
+            <option value="lead_basic">{PRESETS.lead_basic.label}</option>
+            <option value="lead_firmo_techno">{PRESETS.lead_firmo_techno.label}</option>
+            <option value="custom">{PRESETS.custom.label}</option>
+          </select>
+        </label>
+        <div className="small muted" style={{marginTop:18}}>
+          Changing preset will replace the three text fields. You can edit them afterwards.
+        </div>
+      </div>
+      <div className="flex-row wrap">
+        <div style={{flex:1,minWidth:260}}>
+          <label>Wildnet Data<br/>
+            <textarea value={wildnetData} onChange={e=>setWildnetData(e.target.value)} placeholder="Paste Wildnet company/context data" />
+          </label>
+        </div>
+        <div style={{flex:1,minWidth:260}}>
+          <label>Scoring Criteria & ICP<br/>
+            <textarea value={scoringCriteriaAndIcp} onChange={e=>setScoringCriteriaAndIcp(e.target.value)} placeholder="Define scoring criteria & ICP" />
+          </label>
+        </div>
+        <div style={{flex:1,minWidth:260}}>
+          <label>Message Prompt / Instructions<br/>
+            <textarea value={messagePrompt} onChange={e=>setMessagePrompt(e.target.value)} placeholder="Provide messaging style / personalization instructions" />
+          </label>
+        </div>
+      </div>
+      <div className="actions-row" style={{marginTop:'.75rem'}}>
+        <button type="button" className="btn primary" onClick={handleRun} disabled={!canRun || running}>{running? 'Running…' : 'Run'}</button>
+      </div>
+      <div className="small" style={{marginTop:8}}>
+        <div>Total: {progress.total} | Success: {progress.success} | Failed: {progress.failed}</div>
+        {info && <div className="muted" style={{marginTop:4}}>{info}</div>}
+        {lastError && <div style={{color:'crimson',marginTop:4}}>Last error: {lastError}</div>}
+        {lastResponse && (
+          <div style={{marginTop:8}}>
+            <strong>Last response:</strong>
+            <pre style={{whiteSpace:'pre-wrap',background:'#f8fafc',padding:10,border:'1px solid var(--border-color)',borderRadius:6}}>{JSON.stringify(lastResponse,null,2)}</pre>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -18,6 +208,11 @@ function Stage3Dashboard(){
   const [loading,setLoading]=React.useState(false);
   const [rows,setRows]=React.useState([]);
   const [error,setError]=React.useState(null);
+  // Unsent-to-LLM count for current user
+  const [userId, setUserId] = React.useState(null);
+  const [unsentCount, setUnsentCount] = React.useState(null);
+  const [unsentLoading, setUnsentLoading] = React.useState(false);
+  const [unsentErr, setUnsentErr] = React.useState(null);
   const [tagOptions,setTagOptions]=React.useState([]);
   const [selectedTags,setSelectedTags]=React.useState([]);
   const [tagOpen,setTagOpen]=React.useState(false);
@@ -30,6 +225,37 @@ function Stage3Dashboard(){
   const [page,setPage]=React.useState(1);
   const pageSize=200;
   const supabaseClient = supabase;
+
+  // Get current user id
+  React.useEffect(()=>{
+    let mounted=true;
+    if(supabaseClient?.auth){
+      supabaseClient.auth.getUser().then(({ data, error })=>{
+        if(!mounted) return;
+        if(!error) setUserId(data?.user?.id || null);
+      });
+    }
+    return ()=>{ mounted=false; };
+  },[supabaseClient]);
+
+  // Load unsent leads count for this user
+  const loadUnsentCount = React.useCallback(async()=>{
+    if(!supabaseClient || !userId) return;
+    setUnsentLoading(true); setUnsentErr(null);
+    try{
+      let { data, error } = await supabaseClient.rpc('fetch_unsent_leads_by_user', { _user_id: userId });
+      if(error){
+        const alt = await supabaseClient.rpc('fetch_unsent_leads', { _user_id: userId });
+        data = alt.data; error = alt.error;
+      }
+      if(error) throw error;
+      const count = Array.isArray(data)? data.length : 0;
+      setUnsentCount(count);
+    }catch(e){ setUnsentErr(e.message); }
+    finally{ setUnsentLoading(false); }
+  },[supabaseClient,userId]);
+
+  React.useEffect(()=>{ loadUnsentCount(); },[loadUnsentCount]);
 
   // init last 14 days
   React.useEffect(()=>{
@@ -118,6 +344,10 @@ function Stage3Dashboard(){
     <div>
       <h2>Stage3 Dashboard</h2>
       <p className="small muted">View processed LLM scoring & messaging results.</p>
+      <div className="small" style={{marginTop:4}}>
+        Pending to send to LLM: {unsentLoading? '…' : (unsentCount ?? '—')}
+        {unsentErr && <span style={{color:'crimson',marginLeft:8}}>({unsentErr})</span>}
+      </div>
       <section className="card">
         <h3 className="section-title">Filters</h3>
         <div className="flex-row wrap filter-row" style={{gap:'0.9rem',alignItems:'flex-start'}}>

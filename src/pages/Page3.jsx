@@ -76,7 +76,7 @@ export default function Stage2(){
 
   function exportCsv(){
     if(!rows.length) return;
-    const headers=['lead_id','tag','name','title','location','company_name','experience','skills','bio','profile_url','company_page_url','send_to_llm','lead_created_at'];
+    const headers=['lead_id','tag','name','title','location','company_name','experience','skills','bio','profile_url','company_page_url','sent_to_llm','lead_created_at'];
     const lines=[headers.join(',')];
     rows.forEach(r=>{ lines.push(headers.map(h=>`"${(r[h]??'').toString().replace(/"/g,'""')}"`).join(',')); });
     const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`stage2_dashboard_${from}_${to}.csv`; a.click(); URL.revokeObjectURL(url);
@@ -85,7 +85,7 @@ export default function Stage2(){
   return (
     <div className="page3">
       <div className="card mt-md">
-        <h2>Stage2 Dashboard</h2>
+  <h2>Stage2 - Lead Details</h2>
         <div className="flex-row gap-sm wrap mt-sm">
           <label>Date From<br/><input type="date" value={from} onChange={e=>{ setFrom(e.target.value); setPage(1); }} /></label>
           <label>Date To<br/><input type="date" value={to} onChange={e=>{ setTo(e.target.value); setPage(1); }} /></label>
@@ -112,7 +112,7 @@ export default function Stage2(){
               </div>
             )}
           </div>
-          <label>send_to_llm<br/>
+          <label>sent_to_llm<br/>
             <select value={sentToLlm} onChange={e=>{ setSentToLlm(e.target.value); setPage(1); }}>
               <option value="all">All</option>
               <option value="true">True</option>
@@ -140,7 +140,7 @@ export default function Stage2(){
                 <th>bio</th>
                 <th>profile</th>
                 <th>company</th>
-                <th>send_to_llm</th>
+                  <th>sent_to_llm</th>
                 <th>lead_created_at</th>
               </tr>
             </thead>
@@ -158,7 +158,7 @@ export default function Stage2(){
                   <td className="truncate" title={r.bio}>{r.bio}</td>
                   <td>{r.profile_url && <a href={r.profile_url} target="_blank" rel="noreferrer">link</a>}</td>
                   <td>{r.company_page_url && <a href={r.company_page_url} target="_blank" rel="noreferrer">site</a>}</td>
-                  <td>{String(r.send_to_llm)}</td>
+                  <td>{String(r.sent_to_llm)}</td>
                   <td title={r.lead_created_at}>{r.lead_created_at?.slice(0,19).replace('T',' ')}</td>
                 </tr>
               ))}
