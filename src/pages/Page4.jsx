@@ -22,9 +22,72 @@ function Stage3Scraper(){
   const [scoringCriteriaAndIcp, setScoringCriteriaAndIcp] = useState('');
   const [messagePrompt, setMessagePrompt] = useState('');
 
+  // Tag selection (dropdown)
+  const [tagOptions, setTagOptions] = useState([]); // distinct tags from all_leads
+  const [selectedTag, setSelectedTag] = useState(''); // '' means None (default)
+
   // Presets
   const [preset, setPreset] = useState('custom'); // 'lead_basic' | 'lead_firmo_techno' | 'custom'
   const PRESETS = {
+    dreamforce_filtration: {
+      label: 'Dreamforce Filtration',
+      wildnetData: `# About WildnetEdge
+WildnetEdge is the next‑gen, AI‑native deep‑tech innovation brand from Wildnet Technologies. We fuse AI, automation, cloud, and custom software engineering to help enterprises and startups scale smarter, faster, and bolder.
+At WildnetEdge, we don’t just deliver Salesforce services—we deliver measurable business outcomes. As a trusted Salesforce consulting and development partner, we bring together strategic thinking, deep platform expertise, and a relentless focus on speed, scale, and simplicity. Whether you’re optimizing your sales processes, automating service workflows, or building custom Salesforce apps, we align every solution to your KPIs and long-term growth goals.
+With 19+ years in tech and a Salesforce-certified team, we’ve helped startups, enterprises, and everything in between streamline operations and turn Salesforce into a real competitive advantage. From first-time implementation to complex multi-cloud environments, WildnetEdge gives you more than a platform; we give you a smarter way to grow.
+
+# What we do:
+• Custom software & mobile app development
+• Generative AI, NLP, computer vision
+• Cloud migration, DevOps & CI/CD
+• Front-end development (React, Angular, Vue)
+• Back-end development
+• Legacy modernization & enterprise apps
+• AR/VR, blockchain, data analytics & AI-driven personalization
+
+# Salseforce Services
+1. Salesforce Consulting: We help you define your CRM strategy, align it with business goals, and choose the right Salesforce solutions for your needs. From Sales Cloud to Service Cloud to Marketing Cloud, our Salesforce consultants map your workflows, identify bottlenecks, and create a roadmap for transformation.
+2. Salesforce Implementation: Our certified Salesforce implementation specialists handle everything from data migration and configuration to user training and change management. We ensure a seamless rollout that minimizes disruption and maximizes adoption. Every implementation is designed around your workflows, with clean architecture and built-in scalability.
+3. Salesforce Integration: We connect Salesforce to your entire tech ecosystem, ERP systems, marketing platforms, legacy tools, third-party apps, and more. With experience in both native and custom integrations, we eliminate data silos and automate cross-platform workflows. You get a single source of truth and real-time visibility across your operations.
+4. Salesforce Customization: We customize everything, from page layouts and fields to automation rules, Lightning components, and Visualfoce pages, so your CRM truly fits your business. Our Salesforce customization services help you improve usability, streamline processes, and tailor user experiences by role, function, and objective.
+5. Salesforce App/software Development: Need more than standard features? We build custom Salesforce apps on the Salesforce Platform, using Apex, Lightning Web Components, and the latest dev tools. Whether it’s internal productivity tools or customer-facing portals, we create secure, scalable, and AppExchange-ready apps that extend Salesforce functionality and deliver real business value.`,
+      scoringCriteriaAndIcp: `You are an expert lead qualifier. We (WildnetEdge) as a company offer the salsesforce services to the clients which is proved to you.
+Your task is to evaluate each lead's potential whether they are a potential buyer of our (wildnetEdge's) salesforce service or whether they are potential seller of salesforce services like us (WildnetEdge). Refer following points to identify if they are a potential buyer and score on that basis:
+Score the lead on a scale of 1-100 based on crieteria 1 and 2 and then multiply with a multiplier based on criteria 3 to get the final score:
+Criteria - 1: The lead must be at the position of some authority like Manager, Sr. Manager, Director, Head, VP, C-suites, founder, etc. not at employee level (like Developer, Analyst, etc.). Give extra points and mention explicitly if they are in IT Department but only if they are among mentioned positions. (High weightage)
+Criteria - 2: The COMPANY at which the lead is working MUST not offer IT or software services like WildnetEdge. In other words the industry of their company must not fall under "IT or software service" or any services that are mentioned above within triple backticks i.e. their company should not be our direct competitior or ours. Aditionally and VERY IMPORTANTLY, their company should not be a partner or reseller of Salesforce like us. Note: Your your intelligence and provided context about lead to evaluate what their company does, in case if you can't find out what their company does, just mention it in your response and give the score between 40-60 given 1st point is satisfied i.e. lead is at one of the mentioned position in company. Don't make any assumption (Very High Weightage)
+Criteria - 3: This criteria is based on lead's location. After scoring based on above two criteria, apply following multiplier to the score:
+- If lead's location is in USA, Canada, UK, Germany, Italy, France, Netherlands, Switzerland, Sweden, Ireland, Australia, Singapore - multiply the score by 1
+- If lead's location is in India, UAE, Saudi Arabia, Israel, Qatar, Egypt - multiply the score by 0.8
+- If lead's location is in any other country - multiply the score by 0.5
+For ex. if lead scores 70 based on first two criteria and is located in USA, final score will be 70*1=70, if lead is located in India, final score will be 70*0.8=56 and if lead is located in any other country, final score will be 70*0.5=35.
+Should we approach this lead? Score the leads based on above rule (0-100) and explain your reasoning and lead's location based on how well they match our services. Keep the score criteria strict and give high score only to those who fulfill all the criteria to a good extent.
+`,
+      messagePrompt: `Your task is to frame a crisp and highly personalised outreach message for the lead based on their profile information and our services. The message should start with a personalized greet, followed with a question if they are coming for DreamForce'2025 which will be held on 14-16 October, then in next para frame a message of what's going on in their industry in the world and how they can improve themselves, in next paragraph introduce WildnetEdge and offer/talk about some of the highly relevant salseforce services to them in a way that it highlights the value proposition of WildnetEdge's Salesforce services and how it can benefit the lead's company. The message should be engaging and should prompt the lead to respond positively. Use the lead's first name in the message to make it more personalised. Do not mention anything about pricing or discounts in the message. The message should be professional yet friendly in tone. End the message with a call to action. Here are 2 examples of good outreach messages (just for reference, do not copy them):
+Example 1
+
+Hi ABC (from Burlington County Institute of Technology),
+
+Will you be at Dreamforce 2025 in October?
+
+Many Education leaders are scaling student and customer impact with Salesforce. Since Burlington County Institute of Technology is driving vocational training and career readiness, I thought it would be great to connect.
+
+At WildnetEdge, we help Marketing leaders unlock more from Salesforce CRM—enhancing insights, boosting growth, and delivering across Marketing, Sales, Service, and Education Cloud.
+
+Would you be open to a 20-min chat during the event?
+
+Example 2
+
+Hi ABC (Vita Green),
+
+Will you be at Dreamforce (Oct 14–16)? I’m excited about the shift toward the Agentic Enterprise, with AI embedded into industry-specific clouds like Healthcare.
+
+I’d love to hear how Vita Green is streamlining customer interactions to improve service delivery and satisfaction.
+
+At WildnetEdge, we specialize in Salesforce + AI—covering implementation, migration, app development, multi-cloud architecture, and ERP integration—to help organizations unlock the full potential of CRM.
+
+Would you be open to a quick meet-up at Dreamforce to explore how we can accelerate growth through automation and AI?`
+    },
     lead_basic: {
       label: 'Lead filtration',
       wildnetData: `About Wildnet Technologies:\n- We help B2B companies accelerate outbound by identifying high-intent prospects and crafting tailored first-touch messages.\n- Core value prop: Higher reply rates through precise ICP matching and relevant personalization.\n\nContext:\n- Use LinkedIn and public data only.\n- Avoid making assumptions not supported by the data.`,
@@ -52,6 +115,24 @@ function Stage3Scraper(){
     setMessagePrompt(tpl.messagePrompt);
   };
 
+  // Load distinct tag options from all_leads
+  useEffect(() => {
+    let mounted = true;
+    async function loadTags(){
+      try{
+        const { data, error } = await supabase
+          .from('all_leads')
+          .select('tag');
+        if(error) throw error;
+        const setU = new Set();
+        (data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
+        if(mounted) setTagOptions(Array.from(setU).sort((a,b)=>a.localeCompare(b)));
+      }catch{ /* ignore */ }
+    }
+    loadTags();
+    return () => { mounted = false; };
+  }, []);
+
   // Run state
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ total: 0, success: 0, failed: 0 });
@@ -69,7 +150,7 @@ function Stage3Scraper(){
     return () => { mounted = false; };
   }, []);
 
-  const canRun = !!(wildnetData.trim() && scoringCriteriaAndIcp.trim() && messagePrompt.trim() && userId);
+  const canRun = !!(wildnetData.trim() && scoringCriteriaAndIcp.trim() && messagePrompt.trim() && userId && selectedTag);
 
   async function fetchRandomApiKey(){
     // Fetch available keys and pick one randomly
@@ -97,10 +178,23 @@ function Stage3Scraper(){
 
   async function handleRun(){
     setLastError(null); setLastResponse(null); setInfo('');
-    if(!canRun){ setLastError('Fill all text fields first.'); return; }
+    if(!canRun){ setLastError('Fill all text fields and select a tag first.'); return; }
     if(!userId){ setLastError('Not signed in.'); return; }
     setRunning(true); setProgress({ total: 0, success: 0, failed: 0 });
     try{
+      // 0) Save prompt configuration to 'prompts' table
+      {
+        const insertPayload = {
+          wildnet_data: wildnetData.trim(),
+          scoring_criteria_and_icp: scoringCriteriaAndIcp.trim(),
+          message_prompt: messagePrompt.trim(),
+          tag: selectedTag,
+          user_id: userId
+        };
+        const { error: insertErr } = await supabase.from('prompts').insert(insertPayload);
+        if(insertErr) throw insertErr;
+      }
+
       // 1) Leads
       const leads = await fetchUnsentLeadsByUser(userId);
       if(!leads.length){ setInfo('No unsent leads for this user.'); return; }
@@ -158,9 +252,16 @@ function Stage3Scraper(){
       <div className="flex-row wrap" style={{gap:8, alignItems:'center', marginBottom:8}}>
         <label>Preset<br/>
           <select value={preset} onChange={(e)=>{ const k=e.target.value; setPreset(k); applyPreset(k); }}>
+            <option value="dreamforce_filtration">{PRESETS.dreamforce_filtration.label}</option>
             <option value="lead_basic">{PRESETS.lead_basic.label}</option>
             <option value="lead_firmo_techno">{PRESETS.lead_firmo_techno.label}</option>
             <option value="custom">{PRESETS.custom.label}</option>
+          </select>
+        </label>
+        <label style={{marginLeft:8}}>Tag<br/>
+          <select value={selectedTag} onChange={(e)=>setSelectedTag(e.target.value)}>
+            <option value="">None</option>
+            {tagOptions.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </label>
         <div className="small muted" style={{marginTop:18}}>
