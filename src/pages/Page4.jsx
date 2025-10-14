@@ -8,7 +8,7 @@ export default function Stage3(){
   return (
     <div className="page4-wrapper">
       <div className="tabs" style={{display:'flex',gap:8,marginBottom:12}}>
-        <button type="button" className={"btn" + (tab==='scraper'? ' primary':' outline')} onClick={()=>setTab('scraper')}>Scraper</button>
+        <button type="button" className={"btn" + (tab==='scraper'? ' primary':' outline')} onClick={()=>setTab('scraper')}>Set Criteria</button>
         <button type="button" className={"btn" + (tab==='dashboard'? ' primary':' outline')} onClick={()=>setTab('dashboard')}>Dashboard</button>
       </div>
       {tab==='scraper'? <Stage3Scraper /> : <Stage3Dashboard />}
