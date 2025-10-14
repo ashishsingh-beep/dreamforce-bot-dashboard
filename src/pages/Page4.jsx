@@ -436,7 +436,7 @@ function Stage3Dashboard(){
 
   function exportCsv(){
     if(!rows.length) return;
-    const headers=['created_at','lead_id','tag','name','title','company_name','location','score','should_contact','subject','message'];
+    const headers=['created_at','lead_id','tag','name','title','company_name','location','score', 'response','should_contact','subject','message'];
     const lines=[headers.join(',')];
     rows.forEach(r=>{ lines.push(headers.map(h=>`"${(r[h]??'').toString().replace(/"/g,'""')}"`).join(',')); });
     const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='stage3_dashboard.csv'; a.click(); URL.revokeObjectURL(url);
@@ -509,13 +509,14 @@ function Stage3Dashboard(){
               <tr>
                 <th>#</th>
                 <th>Created</th>
-                <th>Lead ID</th>
+                <th>Linkedin url</th>
                 <th>Tag</th>
                 <th>Name</th>
                 <th>Title</th>
                 <th>Company</th>
                 <th>Location</th>
                 <th>Score</th>
+                <th>Response</th>
                 <th>Should Contact</th>
                 <th>Subject</th>
                 <th>Message</th>
@@ -526,13 +527,14 @@ function Stage3Dashboard(){
                 <tr key={r.lead_id+':dash:'+i}>
                   <td>{i+1}</td>
                   <td className="small" title={r.created_at}>{r.created_at?.slice(0,19).replace('T',' ')}</td>
-                  <td className="truncate" title={r.lead_id}><a href={r.linkedin_url} target="_blank" rel="noreferrer">{r.lead_id?.slice(0,10)}…</a></td>
+                  <td className="truncate" title={r.linkedin_url}>{r.linkedin_url ? <a href={r.linkedin_url} target="_blank" rel="noreferrer">link</a> : '—'}</td>
                   <td className="truncate" title={r.tag}>{r.tag}</td>
                   <td className="truncate" title={r.name}>{r.name}</td>
                   <td className="truncate" title={r.title}>{r.title}</td>
                   <td className="truncate" title={r.company_name}>{r.company_name}</td>
                   <td className="truncate" title={r.location}>{r.location}</td>
                   <td style={{textAlign:'center'}}>{r.score}</td>
+                  <td className="truncate" title={r.response}>{r.response}</td>
                   <td style={{textAlign:'center'}}>{r.should_contact}</td>
                   <td className="truncate" title={r.subject}>{r.subject}</td>
                   <td className="truncate" title={r.message}>{r.message==='ineligible'? '—' : r.message?.slice(0,60)}</td>
