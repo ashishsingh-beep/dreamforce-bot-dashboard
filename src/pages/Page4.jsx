@@ -115,17 +115,20 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
     setMessagePrompt(tpl.messagePrompt);
   };
 
-  // Load distinct tag options from all_leads
+  // Load distinct tag options from union(all_leads.tag, requests.tag)
   useEffect(() => {
     let mounted = true;
     async function loadTags(){
       try{
-        const { data, error } = await supabase
-          .from('all_leads')
-          .select('tag');
-        if(error) throw error;
+        const [allLeadsRes, requestsRes] = await Promise.all([
+          supabase.from('all_leads').select('tag'),
+          supabase.from('requests').select('tag')
+        ]);
+        if(allLeadsRes.error) throw allLeadsRes.error;
+        if(requestsRes.error) throw requestsRes.error;
         const setU = new Set();
-        (data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
+        (allLeadsRes.data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
+        (requestsRes.data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
         if(mounted) setTagOptions(Array.from(setU).sort((a,b)=>a.localeCompare(b)));
       }catch{ /* ignore */ }
     }
