@@ -292,9 +292,7 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
         <button type="button" className="btn primary" onClick={handleRun} disabled={!canRun || running}>{running? 'Running…' : 'Run'}</button>
       </div>
       <div className="small" style={{marginTop:8}}>
-        <div>Total: {progress.total} | Success: {progress.success} | Failed: {progress.failed}</div>
         {info && <div className="muted" style={{marginTop:4}}>{info}</div>}
-        {lastError && <div style={{color:'crimson',marginTop:4}}>Last error: {lastError}</div>}
         {lastResponse && (
           <div style={{marginTop:8}}>
             <strong>Last response:</strong>
