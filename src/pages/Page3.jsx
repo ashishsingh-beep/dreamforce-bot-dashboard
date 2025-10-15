@@ -8,6 +8,7 @@ export default function Stage2(){
   const [to,setTo]=useState('');
   const [tags,setTags]=useState([]);
   const [availableTags,setAvailableTags]=useState([]);
+  const [userId, setUserId] = useState(null);
   const selectAllRef=useRef(null);
   const [sentToLlm,setSentToLlm]=useState('all');
   const [location,setLocation]=useState('');
@@ -31,12 +32,23 @@ export default function Stage2(){
     }
   },[from,to]);
 
+  // get current user id
+  useEffect(()=>{
+    let mounted = true;
+    supabase.auth.getUser().then(({ data, error })=>{
+      if(!mounted) return;
+      if(!error) setUserId(data?.user?.id || null);
+    });
+    return ()=>{ mounted = false; };
+  },[]);
+
   const loadTags=useCallback(async()=>{
-    if(!supabase || !from || !to) return;
+    if(!supabase || !from || !to || !userId) return;
     try{
       const { data, error } = await supabase
         .from('all_leads')
         .select('tag')
+        .eq('user_id', userId)
         .gte('created_at', new Date(`${from}T00:00:00Z`).toISOString())
         .lte('created_at', new Date(`${to}T23:59:59Z`).toISOString());
       if(error) throw error;
@@ -45,7 +57,7 @@ export default function Stage2(){
       setAvailableTags(arr);
       setTags(prev=>prev.filter(t=>arr.includes(t)));
     }catch(e){ /*silent*/ }
-  },[from,to]);
+  },[from,to,userId]);
   useEffect(()=>{ loadTags(); },[loadTags]);
 
   useEffect(()=>{ if(selectAllRef.current){ const all=availableTags.length; const sel=tags.length; selectAllRef.current.indeterminate = sel>0 && sel<all; } },[availableTags,tags]);
