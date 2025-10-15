@@ -115,26 +115,35 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
     setMessagePrompt(tpl.messagePrompt);
   };
 
-  // Load distinct tag options from union(all_leads.tag, requests.tag)
+  // Load distinct tag options from union(all_leads.tag, requests.tag) scoped to current user
   useEffect(() => {
     let mounted = true;
     async function loadTags(){
       try{
+        if(!userId){ if(mounted) setTagOptions([]); return; }
         const [allLeadsRes, requestsRes] = await Promise.all([
-          supabase.from('all_leads').select('tag'),
-          supabase.from('requests').select('tag')
+          supabase.from('all_leads').select('tag').eq('user_id', userId),
+          supabase.from('requests').select('tag').eq('request_by', userId)
         ]);
         if(allLeadsRes.error) throw allLeadsRes.error;
         if(requestsRes.error) throw requestsRes.error;
         const setU = new Set();
         (allLeadsRes.data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
         (requestsRes.data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
-        if(mounted) setTagOptions(Array.from(setU).sort((a,b)=>a.localeCompare(b)));
+        const opts = Array.from(setU).sort((a,b)=>a.localeCompare(b));
+        if(mounted) setTagOptions(opts);
       }catch{ /* ignore */ }
     }
     loadTags();
     return () => { mounted = false; };
-  }, []);
+  }, [userId]);
+
+  // Prune selected tag if it is no longer in options
+  useEffect(()=>{
+    if(selectedTag && tagOptions.length && !tagOptions.includes(selectedTag)){
+      setSelectedTag('');
+    }
+  },[tagOptions]);
 
   // Run state
   const [running, setRunning] = useState(false);
@@ -372,7 +381,7 @@ function Stage3Dashboard(){
 
   // load distinct tags by joining llm_response -> all_leads (llm_response itself has no tag column)
   const loadTags=React.useCallback(async()=>{
-    if(!supabaseClient || !dateFrom || !dateTo) return;
+    if(!supabaseClient || !dateFrom || !dateTo || !userId) return;
     try {
       const fromIso=new Date(`${dateFrom}T00:00:00Z`).toISOString();
       const toIso=new Date(`${dateTo}T23:59:59Z`).toISOString();
@@ -393,14 +402,25 @@ function Stage3Dashboard(){
         const { data: tagRows, error: tagErr } = await supabaseClient
           .from('all_leads')
           .select('tag')
-          .in('lead_id', slice);
+          .in('lead_id', slice)
+          .eq('user_id', userId);
         if(tagErr) throw tagErr;
         (tagRows||[]).forEach(r=>{ if(r.tag!=null){ const t=String(r.tag).trim(); if(t) tagsSet.add(t); }});
       }
       setTagOptions(Array.from(tagsSet).sort((a,b)=>a.localeCompare(b)));
     } catch(e){ /* swallow */ }
-  },[supabaseClient,dateFrom,dateTo]);
+  },[supabaseClient,dateFrom,dateTo,userId]);
   React.useEffect(()=>{ loadTags(); },[loadTags]);
+
+  // Prune selected tags that are no longer available (e.g., after user/date filter changes)
+  React.useEffect(()=>{
+    if(selectedTags.length && tagOptions.length){
+      const filtered = selectedTags.filter(t=>tagOptions.includes(t));
+      if(filtered.length !== selectedTags.length){ setSelectedTags(filtered); }
+    } else if(selectedTags.length && !tagOptions.length){
+      setSelectedTags([]);
+    }
+  },[tagOptions]);
 
   React.useEffect(()=>{
     if(selectAllRef.current){ const all=tagOptions.length; const sel=selectedTags.length; selectAllRef.current.indeterminate = sel>0 && sel<all; }
