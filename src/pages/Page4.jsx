@@ -26,6 +26,17 @@ function Stage3Scraper(){
   const [tagOptions, setTagOptions] = useState([]); // distinct tags from all_leads
   const [selectedTag, setSelectedTag] = useState(''); // '' means None (default)
 
+  // Current user id (needed before effects that depend on it)
+  const [userId, setUserId] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if(!mounted) return;
+      if (!error) setUserId(data?.user?.id || null);
+    });
+    return () => { mounted = false; };
+  }, []);
+
   // Presets
   const [preset, setPreset] = useState('custom'); // 'lead_basic' | 'lead_firmo_techno' | 'custom'
   const PRESETS = {
@@ -152,15 +163,6 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
   const [lastResponse, setLastResponse] = useState(null);
   const [info, setInfo] = useState('');
 
-  const [userId, setUserId] = useState(null);
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getUser().then(({ data, error }) => {
-      if(!mounted) return;
-      if (!error) setUserId(data?.user?.id || null);
-    });
-    return () => { mounted = false; };
-  }, []);
 
   const canRun = !!(wildnetData.trim() && scoringCriteriaAndIcp.trim() && messagePrompt.trim() && userId && selectedTag);
 
@@ -430,11 +432,16 @@ function Stage3Dashboard(){
     if(!supabaseClient || !dateFrom || !dateTo) return;
     setLoading(true); setError(null);
     try{
+      // Enforce: if no tags selected, show nothing and skip RPC
+      if(!selectedTags.length){
+        setRows([]);
+        return;
+      }
       // Build RPC payload
       const payload={
         _date_from: dateFrom,
         _date_to: dateTo,
-        _tags: selectedTags.length? selectedTags : null,
+        _tags: selectedTags, // required: only selected tags
         _should_contact_only: shouldOnly,
         _score_op: scoreVal? scoreOp : null,
         _score_value: scoreVal? Number(scoreVal): null,

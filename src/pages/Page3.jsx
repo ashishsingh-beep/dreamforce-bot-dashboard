@@ -68,10 +68,15 @@ export default function Stage2(){
     const nextPage=opts.page || page;
     const nextPageSize=opts.pageSize || pageSize;
     try{
+      // Enforce: if no tags selected, show no rows and skip fetching
+      if(!tags.length){
+        setRows([]); setTotal(0); setPage(nextPage); setPageSize(nextPageSize);
+        return;
+      }
       const { data, error } = await supabase.rpc('fetch_stage2_dashboard', {
         _date_from: from,
         _date_to: to,
-        _tags: tags.length? tags : null,
+        _tags: tags, // required: only selected tags
         _sent_to_llm: sentToLlm==='all'? null : (sentToLlm==='true'),
         _location: location? location.trim(): null,
         _page: nextPage,
