@@ -14,6 +14,7 @@
 .btn.danger { background:#b91c1c; border-color:#b91c1c; }
 .btn[disabled] { opacity:.5; cursor:not-allowed; }
 textarea { width:100%; min-height:110px; font-size:.78rem; font-family:ui-monospace, monospace; padding:.55rem; border:1px solid #cbd5e1; border-radius:6px; resize:vertical; }
+textarea.error-field { border-color:#dc2626 !important; box-shadow:0 0 0 1px rgba(220,38,38,0.25); }
 input[type="text"], input[type="number"] { padding:.45rem .55rem; border:1px solid #cbd5e1; border-radius:6px; font-size:.8rem; width:100%; }
 .grid-keys { display:grid; gap:.5rem; }
 @media (min-width:700px){ .grid-keys { grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); } }

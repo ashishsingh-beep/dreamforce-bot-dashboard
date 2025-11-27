@@ -207,7 +207,7 @@ export default function Stage1() {
       const { data, error } = await query;
       if (error) throw error;
       const rows = data || [];
-      const headers = ['lead_id','linkedin_url','bio','tag','created_at'];
+      const headers = ['lead_id','linkedin_url','bio','post_content','tag','created_at'];
       const csvLines = [headers.join(',')];
       rows.forEach(r => {
         const line = headers.map(h => {
@@ -409,6 +409,7 @@ export default function Stage1() {
                   <th>lead_id</th>
                   <th>linkedin_url</th>
                   <th>bio</th>
+                  <th>post_content</th>
                   <th>tag</th>
                   <th>created_at (IST)</th>
                 </tr>
@@ -419,6 +420,7 @@ export default function Stage1() {
                     <td>{r.lead_id}</td>
                     <td className="truncate" title={r.linkedin_url}><a href={r.linkedin_url} target="_blank" rel="noreferrer">link</a></td>
                     <td className="truncate" title={r.bio}>{r.bio}</td>
+                    <td className="truncate" title={r.post_content}>{r.post_content || '—'}</td>
                     <td>{r.tag}</td>
                     <td>{toIST(r.created_at)}</td>
                   </tr>

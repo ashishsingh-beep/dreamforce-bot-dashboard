@@ -47,24 +47,46 @@ function App() {
         {/* Auth routes: redirect to /request if already logged in */}
         <Route
           path="/login"
-          element={session ? <Navigate to="/request" replace /> : <LoginForm setIsLoggedIn={handleAuth} />}
+          element={
+            session ? (
+              <Navigate to="/request" replace />
+            ) : (
+              <LoginForm setIsLoggedIn={handleAuth} />
+            )
+          }
         />
         <Route
           path="/sign-up"
-          element={session ? <Navigate to="/request" replace /> : <SignupForm setIsLoggedIn={handleAuth} />}
+          element={
+            session ? (
+              <Navigate to="/request" replace />
+            ) : (
+              <SignupForm setIsLoggedIn={handleAuth} />
+            )
+          }
         />
         <Route
           path="/forgot-password"
-          element={session ? <Navigate to="/request" replace /> : <ForgotPasswordForm />}
+          element={
+            session ? (
+              <Navigate to="/request" replace />
+            ) : (
+              <ForgotPasswordForm />
+            )
+          }
         />
-
 
         {/* Protected pages */}
         <Route
           path="/reset-password"
-          element={session ? <ResetPasswordForm /> : <Navigate to="/login" replace />}
+          element={
+            session ? <ResetPasswordForm /> : <Navigate to="/login" replace />
+          }
         />
-    <Route path="/request" element={session ? <Request /> : <Navigate to="/login" replace />} />
+        <Route
+          path="/request"
+          element={session ? <Request /> : <Navigate to="/login" replace />}
+        />
         <Route
           path="/page2"
           element={session ? <Stage1 /> : <Navigate to="/login" replace />}
@@ -82,9 +104,15 @@ function App() {
           element={session ? <Stage4 /> : <Navigate to="/login" replace />}
         />
 
-  {/* Root / fallback now point to /request */}
-  <Route path="/" element={<Navigate to={session ? "/request" : "/login"} replace />} />
-  <Route path="*" element={<Navigate to={session ? "/request" : "/login"} replace />} />
+        {/* Root / fallback now point to /request */}
+        <Route
+          path="/"
+          element={<Navigate to={session ? "/request" : "/login"} replace />}
+        />
+        <Route
+          path="*"
+          element={<Navigate to={session ? "/request" : "/login"} replace />}
+        />
       </Routes>
       {console.log("env:", import.meta.env)}
     </>

@@ -21,6 +21,9 @@ export default function Request() {
   // Name field removed per schema change
   const [tag, setTag] = useState('');
   const [loadTime, setLoadTime] = useState(3);
+  // Updated: scrape_likes binary toggle (true=likes pipeline, false=posts pipeline)
+  // Default ON (likes) per requirement.
+  const [scrapeLikes, setScrapeLikes] = useState(true);
   // Bulk upload state
   const [bulkTag, setBulkTag] = useState('');
   const [bulkFile, setBulkFile] = useState(null);
@@ -55,7 +58,7 @@ export default function Request() {
     try {
       const { data, error } = await supabase
     .from('requests')
-    .select('request_id, created_at, keywords, search_url, tag, load_time, is_fulfilled')
+    .select('request_id, created_at, keywords, search_url, tag, load_time, is_fulfilled, scrape_likes')
         .eq('request_by', userId)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -121,12 +124,14 @@ export default function Request() {
         tag: tag.trim(),
         load_time: num,
         // is_fulfilled left as default (false)
+        scrape_likes: scrapeLikes
       };
       const { data, error } = await supabase.from('requests').insert([row]).select().maybeSingle();
       if (error) throw error;
       setFormMsg('Request submitted.');
   setKeywords('');
   setSearchUrl('');
+      // Preserve scrapeLikes selection; do not reset.
       // Keep name sticky so user doesn't retype each time
       // Refresh history (or rely on realtime)
       if (!realtimeEnabled) loadHistory();
@@ -325,6 +330,21 @@ export default function Request() {
               />
               <span className="small muted">Try to keep duration between 3–10 sec.</span>
             </label>
+            {/* scrape_likes pipeline toggle */}
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              <span className="small" style={{fontWeight:600}}>Pipeline Selection</span>
+              <button
+                type="button"
+                className={`toggle-likes ${scrapeLikes? 'on':'off'}`}
+                onClick={()=> setScrapeLikes(v=> !v)}
+                disabled={submitting}
+                title={scrapeLikes? 'Currently scraping Likes (click to switch to Posts)':'Currently scraping Posts (click to switch to Likes)'}
+              >
+                <span className="pill"><span className="thumb" /></span>
+                {scrapeLikes? 'Include Likes' : 'Exclude Likes'}
+              </button>
+              <div className="small muted">{scrapeLikes? 'Will run likes data pipeline.' : 'Will run posts data pipeline.'}</div>
+            </div>
             {/* Name field removed */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="submit" className="btn btn-primary" disabled={submitting || !userId}>{submitting ? 'Submitting...' : 'Send Request'}</button>
@@ -355,6 +375,7 @@ export default function Request() {
                     <th style={{ whiteSpace: 'nowrap' }}>Search URL</th>
                     <th style={{ whiteSpace: 'nowrap' }}>Tag</th>
                     <th style={{ whiteSpace: 'nowrap' }}>Duration</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>Pipeline</th>
                     <th style={{ whiteSpace: 'nowrap' }}>Fulfilled</th>
                     <th>ID</th>
                   </tr>
@@ -367,12 +388,15 @@ export default function Request() {
                       <td className="truncate" title={r.search_url}>{r.search_url?.slice(0,120) || '—'}</td>
                       <td className="truncate" title={r.tag}>{r.tag || '—'}</td>
                       <td style={{ textAlign:'center' }}>{r.load_time ?? '—'}</td>
+                      <td style={{ textAlign:'center' }} title={typeof r.scrape_likes === 'boolean' ? (r.scrape_likes? 'Scrape Likes pipeline':'Scrape Posts pipeline') : 'Unknown'}>
+                        {typeof r.scrape_likes === 'boolean' ? (r.scrape_likes ? 'Likes' : 'Posts') : '—'}
+                      </td>
                       <td style={{ textAlign: 'center' }}>{r.is_fulfilled ? 'Yes' : 'No'}</td>
                       <td className="truncate" title={r.request_id}>{r.request_id?.slice(0,8)}…</td>
                     </tr>
                   ))}
-                  {!history.length && !loadingHistory && <tr><td colSpan={7} className="empty">No requests yet</td></tr>}
-                  {loadingHistory && <tr><td colSpan={7}>Loading…</td></tr>}
+                  {!history.length && !loadingHistory && <tr><td colSpan={8} className="empty">No requests yet</td></tr>}
+                  {loadingHistory && <tr><td colSpan={8}>Loading…</td></tr>}
                 </tbody>
               </table>
             </div>

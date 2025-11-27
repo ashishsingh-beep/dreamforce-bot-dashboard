@@ -17,10 +17,12 @@ export default function Stage3(){
 }
 
 function Stage3Scraper(){
-  // Shared Text Inputs
+  // Shared Prompt Text Inputs
   const [wildnetData, setWildnetData] = useState('');
   const [scoringCriteriaAndIcp, setScoringCriteriaAndIcp] = useState('');
   const [messagePrompt, setMessagePrompt] = useState('');
+  // Optional additional guidance prompt stored as post_analysis_promot
+  const [postAnalysisPromot, setPostAnalysisPromot] = useState('');
 
   // Tag selection (dropdown)
   const [tagOptions, setTagOptions] = useState([]); // distinct tags from all_leads
@@ -124,6 +126,7 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
     setWildnetData(tpl.wildnetData);
     setScoringCriteriaAndIcp(tpl.scoringCriteriaAndIcp);
     setMessagePrompt(tpl.messagePrompt);
+    // Do not auto-populate postAnalysisPromot; leave for user customization
   };
 
   // Load distinct tag options from union(all_leads.tag, requests.tag) scoped to current user
@@ -143,7 +146,7 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
         (requestsRes.data||[]).forEach(r => { const t = (r.tag ?? '').toString().trim(); if(t) setU.add(t); });
         const opts = Array.from(setU).sort((a,b)=>a.localeCompare(b));
         if(mounted) setTagOptions(opts);
-      }catch{ /* ignore */ }
+      }catch(e){ console.warn('loadTags (prompts tags) failed', e); }
     }
     loadTags();
     return () => { mounted = false; };
@@ -154,27 +157,20 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
     if(selectedTag && tagOptions.length && !tagOptions.includes(selectedTag)){
       setSelectedTag('');
     }
-  },[tagOptions]);
+  },[tagOptions, selectedTag]);
 
   // Run state
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ total: 0, success: 0, failed: 0 });
   const [lastError, setLastError] = useState(null);
-  const [lastResponse, setLastResponse] = useState(null);
+  // Removed external backend response handling
   const [info, setInfo] = useState('');
+  const [successMsg, setSuccessMsg] = useState(null);
 
-
+  // Required fields (postAnalysisPromot is optional)
   const canRun = !!(wildnetData.trim() && scoringCriteriaAndIcp.trim() && messagePrompt.trim() && userId && selectedTag);
 
-  async function fetchRandomApiKey(){
-    // Fetch available keys and pick one randomly
-    const { data, error } = await supabase.from('gemini_api').select('api_key');
-    if(error) throw error;
-    const rows = Array.isArray(data)? data : [];
-    if(!rows.length) throw new Error('No API keys found in gemini_api');
-    const idx = Math.floor(Math.random()*rows.length);
-    return rows[idx].api_key;
-  }
+  // Removed external API key fetch: no backend calls now.
 
   async function fetchUnsentLeadsByUser(uid){
     // Prefer documented function name; fallback to alternate if needed
@@ -191,7 +187,7 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
   }
 
   async function handleRun(){
-    setLastError(null); setLastResponse(null); setInfo('');
+    setLastError(null); setInfo(''); setSuccessMsg(null);
     if(!canRun){ setLastError('Fill all text fields and select a tag first.'); return; }
     if(!userId){ setLastError('Not signed in.'); return; }
     setRunning(true); setProgress({ total: 0, success: 0, failed: 0 });
@@ -202,6 +198,7 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
           wildnet_data: wildnetData.trim(),
           scoring_criteria_and_icp: scoringCriteriaAndIcp.trim(),
           message_prompt: messagePrompt.trim(),
+          post_analysis_promot: postAnalysisPromot.trim() || null,
           tag: selectedTag,
           user_id: userId
         };
@@ -214,45 +211,11 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
       if(!leads.length){ setInfo('No unsent leads for this user.'); return; }
       setProgress(p=> ({ ...p, total: leads.length }));
 
-      // 2) API key
-      const apiKey = await fetchRandomApiKey();
+      // Removed per-lead loop; counters replaced by direct assignment.
 
-      // 3) Send one request per lead
-      for(let i=0;i<leads.length;i++){
-        const ld = leads[i];
-        const payload = {
-          api_key: apiKey,
-          wildnet_data: wildnetData.trim(),
-          scoring_criteria_and_icp: scoringCriteriaAndIcp.trim(),
-          message_prompt: messagePrompt.trim(),
-          lead: {
-            lead_id: ld.lead_id ?? null,
-            tag: ld.tag ?? null,
-            name: ld.name ?? null,
-            title: ld.title ?? null,
-            location: ld.location ?? null,
-            company_name: ld.company_name ?? null,
-            experience: ld.experience ?? null,
-            skills: ld.skills ?? null,
-            bio: ld.bio ?? null,
-            profile_url: ld.profile_url ?? null,
-            linkedin_url: ld.linkedin_url ?? null,
-            company_page_url: ld.company_page_url ?? null,
-          }
-        };
-        try{
-          const res = await fetch('http://localhost:8000/process-lead', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-          });
-          const json = await res.json().catch(()=>({ success:false, error:'Invalid JSON response' }));
-          setLastResponse(json);
-          if(!res.ok){ throw new Error(json.error || `HTTP ${res.status}`); }
-          setProgress(prev => ({ ...prev, success: prev.success + 1 }));
-        }catch(e){
-          setLastError(e.message || 'Failed for a lead');
-          setProgress(prev => ({ ...prev, failed: prev.failed + 1 }));
-        }
-      }
+      // 2) Simulated processing (backend removed)
+      setProgress(p=> ({ ...p, success: leads.length }));
+      setSuccessMsg(`Simulated processing: ${leads.length} lead(s) ready (no external backend).`);
     }catch(e){
       setLastError(e.message || 'Failed to run');
     }finally{
@@ -298,18 +261,26 @@ Would you be open to a quick meet-up at Dreamforce to explore how we can acceler
             <textarea value={messagePrompt} onChange={e=>setMessagePrompt(e.target.value)} placeholder="Provide messaging style / personalization instructions" />
           </label>
         </div>
+        <div style={{flex:1,minWidth:260}}>
+          <label>post_analysis_promot (optional)<br/>
+            <textarea
+              value={postAnalysisPromot}
+              onChange={e=>setPostAnalysisPromot(e.target.value)}
+              placeholder="Additional post-analysis guidance or context (optional)"
+            />
+          </label>
+          {postAnalysisPromot.trim() && <div className="small muted" style={{marginTop:4}}>Will be saved to prompts table.</div>}
+        </div>
       </div>
       <div className="actions-row" style={{marginTop:'.75rem'}}>
         <button type="button" className="btn primary" onClick={handleRun} disabled={!canRun || running}>{running? 'Running…' : 'Run'}</button>
       </div>
       <div className="small" style={{marginTop:8}}>
+        {lastError && <div style={{color:'crimson'}}>{lastError}</div>}
+        {successMsg && <div style={{color:'green',marginTop:4}}>{successMsg}</div>}
+        {progress.total>0 && <div className="muted">Progress: {progress.success}/{progress.total} succeeded, {progress.failed} failed.</div>}
         {info && <div className="muted" style={{marginTop:4}}>{info}</div>}
-        {lastResponse && (
-          <div style={{marginTop:8}}>
-            <strong>Last response:</strong>
-            <pre style={{whiteSpace:'pre-wrap',background:'#f8fafc',padding:10,border:'1px solid var(--border-color)',borderRadius:6}}>{JSON.stringify(lastResponse,null,2)}</pre>
-          </div>
-        )}
+        {/* Removed lastResponse display: no external backend responses now */}
       </div>
     </section>
   );
@@ -410,7 +381,7 @@ function Stage3Dashboard(){
         (tagRows||[]).forEach(r=>{ if(r.tag!=null){ const t=String(r.tag).trim(); if(t) tagsSet.add(t); }});
       }
       setTagOptions(Array.from(tagsSet).sort((a,b)=>a.localeCompare(b)));
-    } catch(e){ /* swallow */ }
+    } catch(e){ console.warn('loadTags (dashboard) failed', e); }
   },[supabaseClient,dateFrom,dateTo,userId]);
   React.useEffect(()=>{ loadTags(); },[loadTags]);
 
@@ -422,26 +393,21 @@ function Stage3Dashboard(){
     } else if(selectedTags.length && !tagOptions.length){
       setSelectedTags([]);
     }
-  },[tagOptions]);
+  },[tagOptions, selectedTags]);
 
   React.useEffect(()=>{
     if(selectAllRef.current){ const all=tagOptions.length; const sel=selectedTags.length; selectAllRef.current.indeterminate = sel>0 && sel<all; }
   },[tagOptions,selectedTags]);
 
-  async function fetchData(){
+  const fetchData = React.useCallback(async () => {
     if(!supabaseClient || !dateFrom || !dateTo) return;
     setLoading(true); setError(null);
     try{
-      // Enforce: if no tags selected, show nothing and skip RPC
-      if(!selectedTags.length){
-        setRows([]);
-        return;
-      }
-      // Build RPC payload
+      if(!selectedTags.length){ setRows([]); return; }
       const payload={
         _date_from: dateFrom,
         _date_to: dateTo,
-        _tags: selectedTags, // required: only selected tags
+        _tags: selectedTags,
         _should_contact_only: shouldOnly,
         _score_op: scoreVal? scoreOp : null,
         _score_value: scoreVal? Number(scoreVal): null,
@@ -457,13 +423,13 @@ function Stage3Dashboard(){
       setRows(r);
     }catch(e){ setError(e.message); }
     finally{ setLoading(false); }
-  }
+  }, [supabaseClient, dateFrom, dateTo, selectedTags, shouldOnly, scoreOp, scoreVal, locationSub, sortDir, page, pageSize]);
 
-  React.useEffect(()=>{ fetchData(); },[dateFrom,dateTo,selectedTags,shouldOnly,scoreOp,scoreVal,locationSub,sortDir,page]);
+  React.useEffect(()=>{ fetchData(); },[fetchData]);
 
   function exportCsv(){
     if(!rows.length) return;
-    const headers=['created_at','lead_id','tag','name','title','company_name','location','score', 'response','should_contact','subject','message'];
+    const headers=['created_at','lead_id','tag','name','title','company_name','location','score','response','should_contact','subject','message','post_content','post_analysis'];
     const lines=[headers.join(',')];
     rows.forEach(r=>{ lines.push(headers.map(h=>`"${(r[h]??'').toString().replace(/"/g,'""')}"`).join(',')); });
     const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='stage3_dashboard.csv'; a.click(); URL.revokeObjectURL(url);
@@ -547,6 +513,8 @@ function Stage3Dashboard(){
                 <th>Should Contact</th>
                 <th>Subject</th>
                 <th>Message</th>
+                <th>Post Content</th>
+                <th>POST_ANALYSIS</th>
               </tr>
             </thead>
             <tbody>
@@ -565,10 +533,12 @@ function Stage3Dashboard(){
                   <td style={{textAlign:'center'}}>{r.should_contact}</td>
                   <td className="truncate" title={r.subject}>{r.subject}</td>
                   <td className="truncate" title={r.message}>{r.message==='ineligible'? '—' : r.message?.slice(0,60)}</td>
+                  <td className="truncate" title={r.post_content}>{r.post_content?.slice(0,60) || '—'}</td>
+                  <td className="truncate" title={r.post_analysis}>{r.post_analysis?.slice(0,60) || '—'}</td>
                 </tr>
               ))}
-              {!rows.length && !loading && <tr><td colSpan={12} className="empty">No data</td></tr>}
-              {loading && <tr><td colSpan={12}>Loading…</td></tr>}
+              {!rows.length && !loading && <tr><td colSpan={13} className="empty">No data</td></tr>}
+              {loading && <tr><td colSpan={13}>Loading…</td></tr>}
             </tbody>
           </table>
         </div>
