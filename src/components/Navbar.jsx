@@ -38,7 +38,7 @@ function Navbar({ session }) {
     <header className="navbar">
       <div className="nav-left">
         <Link to="/request" className="logo">
-          <img src="/vite.svg" alt="logo" className="logo-img" />
+          <img src="/logo.jpg" alt="logo" className="logo-img" />
           <span className="brand">{config.appTitle}</span>
         </Link>
       </div>

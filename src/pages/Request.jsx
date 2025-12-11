@@ -330,19 +330,27 @@ export default function Request() {
               />
               <span className="small muted">Try to keep duration between 3–10 sec.</span>
             </label>
-            {/* scrape_likes pipeline toggle */}
+            {/* scrape_likes pipeline selection via two checkboxes (mutually exclusive) */}
             <div style={{display:'flex',flexDirection:'column',gap:6}}>
               <span className="small" style={{fontWeight:600}}>Pipeline Selection</span>
-              <button
-                type="button"
-                className={`toggle-likes ${scrapeLikes? 'on':'off'}`}
-                onClick={()=> setScrapeLikes(v=> !v)}
-                disabled={submitting}
-                title={scrapeLikes? 'Currently scraping Likes (click to switch to Posts)':'Currently scraping Posts (click to switch to Likes)'}
-              >
-                <span className="pill"><span className="thumb" /></span>
-                {scrapeLikes? 'Include Likes' : 'Exclude Likes'}
-              </button>
+              <label className="small" style={{display:'flex',alignItems:'center',gap:6}}>
+                <input
+                  type="checkbox"
+                  checked={scrapeLikes === true}
+                  onChange={()=> setScrapeLikes(true)}
+                  disabled={submitting}
+                />
+                Include Likes (likes pipeline)
+              </label>
+              <label className="small" style={{display:'flex',alignItems:'center',gap:6}}>
+                <input
+                  type="checkbox"
+                  checked={scrapeLikes === false}
+                  onChange={()=> setScrapeLikes(false)}
+                  disabled={submitting}
+                />
+                Exclude Likes (posts pipeline)
+              </label>
               <div className="small muted">{scrapeLikes? 'Will run likes data pipeline.' : 'Will run posts data pipeline.'}</div>
             </div>
             {/* Name field removed */}

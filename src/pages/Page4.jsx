@@ -429,7 +429,7 @@ function Stage3Dashboard(){
 
   function exportCsv(){
     if(!rows.length) return;
-    const headers=['created_at','lead_id','tag','name','title','company_name','location','score','response','should_contact','subject','message','post_content','post_analysis'];
+    const headers=['created_at','linkedin_url','tag','name','title','company_name','location','score','response','should_contact','subject','message','post_content','post_analysis'];
     const lines=[headers.join(',')];
     rows.forEach(r=>{ lines.push(headers.map(h=>`"${(r[h]??'').toString().replace(/"/g,'""')}"`).join(',')); });
     const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='stage3_dashboard.csv'; a.click(); URL.revokeObjectURL(url);

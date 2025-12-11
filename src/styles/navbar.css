@@ -25,9 +25,9 @@
 
 .nav-left, .nav-right { display:flex; align-items:center; gap:12px; }
 
-.logo { display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; }
-.logo-img{ width:34px; height:34px; border-radius:8px; object-fit:cover; opacity:0.95; }
-.brand{ font-weight:700; font-size:1rem; color:#0b1220; }
+.logo { display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; }
+.logo-img{ width:48px; height:48px; border-radius:8px; object-fit:cover; opacity:0.95; }
+.brand{ font-weight:700; font-size:1.1rem; color:#0b1220; }
 
 /* nav links */
 .nav-links { display:flex; gap:8px; align-items:center; position:relative; }
